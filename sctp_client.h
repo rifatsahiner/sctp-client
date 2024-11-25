@@ -1,12 +1,9 @@
 #ifndef SCTP_CLIENT_H
 #define SCTP_CLIENT_H
 
-//#include <netinet/sctp.h>
 #include <functional>
 #include <thread>
 #include <string_view>
-//#include <atomic>
-//#include <string>
 
 class SctpClient {
 public:
@@ -24,10 +21,10 @@ public:
         PeerConnectError = -2
     };
 
-    [[nodiscard]] std::pair<ConnectionResult, std::string_view> connect(const std::string& address, int port);
+    [[nodiscard]] std::pair<ConnectionResult, std::string_view> connect(const std::string& address, uint16_t port);
     void close(void);
     bool send(const std::string& message);
-    bool sendWithContext(const std::string& message, uint32_t context);
+    bool sendWithContext(const std::string& message, uint_fast32_t context);
 
 private:
     int _sockFd;

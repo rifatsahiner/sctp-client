@@ -1,6 +1,7 @@
 
 #include "sctp_client.h"
 
+#include <unistd.h>
 #include <arpa/inet.h>
 #include <netinet/sctp.h>
 
@@ -35,11 +36,11 @@ SctpClient::~SctpClient() {
 /////  public  /////
 ////////////////////
 
-std::pair<ConnectionResult, std::string_view> SctpClient::connect(const std::string& address, uint8_t port)
-{
+std::pair<SctpClient::ConnectionResult, std::string_view> SctpClient::connect(const std::string& address, uint16_t port) {
+    struct sockaddr_in server_addr;
+    
     if(_isOpen == false) {
         // check and form ip address
-        struct sockaddr_in server_addr;
         std::memset(&server_addr, 0, sizeof(server_addr));  // clean struct
         server_addr.sin_family = AF_INET;                   // todo: ipv6 consideration ???
         server_addr.sin_port = htons(port);
@@ -52,7 +53,7 @@ std::pair<ConnectionResult, std::string_view> SctpClient::connect(const std::str
         _sockFd = socket(AF_INET, SOCK_STREAM, IPPROTO_SCTP);
         if (_sockFd < 0) {
             // socket open occurred, return error number and message
-            return std::make_pair(ConnectionResult::SocketError, std::string_view("Socket open failed. Error number: " << errno << " Message: " << strerror(errno)));
+            return std::make_pair(ConnectionResult::SocketError, std::string_view("Open failed. Error number: " + std::to_string(errno) + " Message: " + strerror(errno)));
         }
 
         // socket subscribe to required events and notifications
@@ -65,7 +66,7 @@ std::pair<ConnectionResult, std::string_view> SctpClient::connect(const std::str
         if (setsockopt(_sockFd, IPPROTO_SCTP, SCTP_EVENTS, &events, sizeof(events)) < 0) {
             // subs failed, return error number and message
             ::close(_sockFd);
-            return std::make_pair(ConnectionResult::SocketError, std::string_view("Socket notification subscribe failed. Error number: " << errno << " Message: " << strerror(errno)));
+            return std::make_pair(ConnectionResult::SocketError, std::string_view("Socket notification subscribe failed. Error number: " + std::to_string(errno) + " Message: " + strerror(errno)));
         }
 
         _isOpen = true;
@@ -75,7 +76,7 @@ std::pair<ConnectionResult, std::string_view> SctpClient::connect(const std::str
     // sctp connect
     if (::connect(_sockFd, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
         // connect failed
-        return std::make_pair(ConnectionResult::PeerConnectError, std::string_view("sctp connect failed. Error number: " << errno << " Message: " << strerror(errno))));
+        return std::make_pair(ConnectionResult::PeerConnectError, std::string_view("sctp connect failed. Error number: " + std::to_string(errno) + " Message: " + strerror(errno)));
     }
 
     // start receive thread and return success
@@ -162,15 +163,15 @@ void SctpClient::_receiveLoop(void) {
         ssize_t recv_len = sctp_recvmsg(_sockFd, buffer, RECV_BUFFER_SIZE, nullptr, nullptr, &sndrcvinfo, &flags);
         
         if (recv_len < 0) {
-            // cannot log, just break
-            break;
+            // cannot log, just continue
+            continue;
         }
 
         // Check if it's a notification
         if (flags & MSG_NOTIFICATION) {
             _handleNotification((union sctp_notification*)buffer, recv_len);
         } else {
-            // Handle regular messages
+            // Handle regular message receive
             buffer[recv_len] = '\0';
             _receiveCb(std::string(buffer));
         }
@@ -179,7 +180,7 @@ void SctpClient::_receiveLoop(void) {
 
 void SctpClient::_handleNotification(const union sctp_notification* notif, size_t notifLen)
 {
-    if (notif == nullptr || notifLen < sizeof(struct sctp_notification)) {
+    if (notif == nullptr || notifLen < sizeof(union sctp_notification)) {
         // cannot log, just return
         return;
     }
@@ -189,6 +190,13 @@ void SctpClient::_handleNotification(const union sctp_notification* notif, size_
             // const struct sctp_assoc_change *assoc_change = &notif->sn_assoc_change;
             // printf("SCTP_ASSOC_CHANGE: State=%d, Error=%d\n",
             //        assoc_change->sac_state, assoc_change->sac_error);
+
+            if(_connectionLostCb == nullptr){
+                return;
+            }
+
+            
+
             break;
         }
         case SCTP_PEER_ADDR_CHANGE: {
