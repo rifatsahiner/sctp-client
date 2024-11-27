@@ -1,2 +1,2 @@
 # sctp-client
-C++ sctp-client over linux libsctp 
+C++17 sctp-client over linux libsctp 
