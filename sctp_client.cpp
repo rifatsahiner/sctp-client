@@ -102,6 +102,7 @@ std::pair<SctpClient::ConnectionResult, std::string_view> SctpClient::connect(co
         return std::make_pair(ConnectionResult::PeerConnectError, std::string_view("sctp connect failed. Error number: " + std::to_string(errno) + " Message: " + strerror(errno)));
     }
 
+    /*
     // struct sctp_rtoinfo params;
     // socklen_t optlen = sizeof(params);
     // getsockopt(_sockFd, IPPROTO_SCTP, SCTP_RTOINFO, &params, &optlen);
@@ -132,6 +133,7 @@ std::pair<SctpClient::ConnectionResult, std::string_view> SctpClient::connect(co
     // std::cout << "default pr -- assoc-id: " << (unsigned int) params5.pr_assoc_id << std::endl;
     // std::cout << "default pr -- pr-value(?): " << (unsigned int) params5.pr_value << std::endl;
     // std::cout << "default pr -- pr policy: " << (unsigned int) params5.pr_policy << std::endl;
+    */
 
     // start receive thread and return success
     _isConnected = true;
@@ -221,11 +223,10 @@ void SctpClient::_receiveLoop(void) {
         } else {
             // Handle regular message receive
             if(recv_len > 0){
-                buffer[recv_len] = '\0';
                 if(_receiveCb.index() == 0) {
-                    std::get<0>(_receiveCb)(std::string(buffer));
+                    std::get<0>(_receiveCb)(std::string(buffer, recv_len));
                 } else {
-                    std::get<1>(_receiveCb)(std::string(buffer), sndrcvinfo.sinfo_context);
+                    std::get<1>(_receiveCb)(std::string(buffer, recv_len), sndrcvinfo.sinfo_context);
                 }
             } else {
                 _zeroLenMsgCounter++;   // received zero length msg in test when connection lost does not handled properly, so this check

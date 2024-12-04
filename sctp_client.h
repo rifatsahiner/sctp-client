@@ -37,7 +37,8 @@ public:
     [[nodiscard]] std::pair<ConnectionResult, std::string_view> connect(const std::string& address, uint16_t port);
     void close(void);       // does not trigger connectionLostCb
     bool send(const std::string& message, uint_fast32_t context = UINT_FAST32_MAX);
-    bool addPath(const std::string& address);       // !!! not tested - server tarafinda farklı olarak once bind cagirilmasi gerekiyor
+    // bool send(const char* msgPtr, uint_fast16_t msgLen, uint_fast32_t context = UINT_FAST32_MAX);    // todo: eklenecek
+    bool addPath(const std::string& address);       // !!! todo: not tested - server tarafinda farklı olarak once bind cagirilmasi gerekiyor
     bool removePath(const std::string& address);    // !!! not tested
 
 private:
