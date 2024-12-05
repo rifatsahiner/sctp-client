@@ -147,10 +147,10 @@ void SctpClient::close(void)
     if(_isConnected) {
         // send shutdown, join receive thread, close socket
         _isConnected = false;
+        shutdown(_sockFd, SHUT_RDWR);
         if (_receiveThread.joinable()) {
             _receiveThread.join();
         }
-        shutdown(_sockFd, SHUT_RDWR);
     }
 
     if(_isOpen){
